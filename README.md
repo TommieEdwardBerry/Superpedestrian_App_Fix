@@ -178,6 +178,10 @@ Working private v7 build: **663305 bytes flash; 30224 bytes static RAM**, with E
 
 Hardware validation applies to that Rev6 PCB and wheel. Other displays, GPIO maps, firmware versions, or presets need their own verification. The stored trip is an integrated travel estimate, not a lifetime wheel odometer. Reverse-motion interpretation has not been established. No automatic sensor-based or GPS correction is included.
 
+## Contact
+
+Contact: [tommie@berry.org](mailto:tommie@berry.org)
+
 ## References and acknowledgements
 
 - [subparpedestrian/cphw-pc](https://github.com/subparpedestrian/cphw-pc), inspected at commit `6daaf44d7f6f3dd5e4fef777dae4269646db22dd`: protocol/authentication research and CRC comparison.
