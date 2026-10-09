@@ -12,6 +12,12 @@ The owner bought a bicycle fitted with a Copenhagen Wheel. The original phone ap
 
 This project supplies Arduino firmware for that controller. It is not an iPhone app and does not require the original online account login. Authentication still requires the wheel's own identity and Bluetooth passcode.
 
+## Display photo
+
+![Rev6 touchscreen showing TERRY, 61% remaining wheel battery, speed, trip miles, RESET, and TURBO assistance](MyScreen.png)
+
+The owner's controller showing the battery percentage above RESET, wheel speed, resettable trip distance, and assistance arrows.
+
 ## Final interface
 
 - Centered TERRY heading and ECO < STANDARD < TURBO guide.
