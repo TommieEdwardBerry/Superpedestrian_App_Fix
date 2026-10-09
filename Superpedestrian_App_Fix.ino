@@ -13,6 +13,7 @@ class WheelCallbacks : public BLEClientCallbacks {
 };
 WheelCallbacks wheelCallbacks;
 #include "WheelTelemetry.h"
+#include "WheelBattery.h"
 const char* modeNames[]={"ECO","STANDARD","TURBO"};
 const char* statusNames[]={"Connecting to Terry...","Ready - tap an arrow","Wheel unavailable; tap to retry","Wrong wheel identity","Authentication failed","Mode read failed","Unrecognized wheel mode","Mode write failed","Readback did not match","Touch needs calibration"};
 const char* boardUuid="52756265-6e43-6167-6e69-654350485105";
@@ -100,6 +101,7 @@ void bleWorker(void*) {
       }
     }
     if(client->isConnected() && linked)pollTelemetry(client);
+    pollBattery(client);
     saveTrip(false);
     vTaskDelay(pdMS_TO_TICKS(20));
   }
@@ -124,7 +126,7 @@ void drawPage() {
 }
 void setup() {
   Serial.begin(115200);delay(1000);
-  Serial.println("Terry controller v7: speed/trip; r=read mode, z=reset trip, d=telemetry, c=touch calibration.");
+  Serial.println("Terry controller v8: speed/trip/battery; r=read mode, z=reset trip, d=telemetry, c=touch calibration.");
   initScreen();loadTouchCalibration();loadTrip();drawPage();
   if(xTaskCreatePinnedToCore(bleWorker,"wheel",12288,nullptr,1,nullptr,0)!=pdPASS) {
     busy=false;statusCode=2;request=9;
@@ -135,7 +137,7 @@ void loop() {
   static bool held=false,lastCalibrated=false;
   while(Serial.available()) {
     char c=Serial.read();
-    if(c=='d')Serial.printf("TELEMETRY valid=%d speed_tenths_mph=%lu trip_mm=%lu\n",telemetryValid.load(),(unsigned long)speedTenths.load(),(unsigned long)tripMm.load());
+    if(c=='d')Serial.printf("TELEMETRY valid=%d speed_tenths_mph=%lu trip_mm=%lu battery_pct=%d\n",telemetryValid.load(),(unsigned long)speedTenths.load(),(unsigned long)tripMm.load(),batteryPercent.load());
     if(c=='z' && !busy){busy=true;request=10;}
     if(c=='r' && !busy){busy=true;request=0;}
     if(c=='c' && !busy){calibrateTouch();drawPage();}
@@ -174,10 +176,26 @@ void loop() {
   }
   static uint32_t lastSpeed=UINT32_MAX,lastTrip=UINT32_MAX;
   static bool lastValid=false;
+  static int lastBattery=-99;
   if(online) {
     bool valid=telemetryValid.load() && uint32_t(millis()-telemetryAt.load())<3000;
     uint32_t speed=speedTenths.load(),distance=uint32_t(uint64_t(tripMm.load())*1000/1609344); // thousandths of a mile
     char text[32];
+    int battery=batteryPercent.load();
+    if(uint32_t(millis()-batteryAt.load())>=20000)battery=-1;
+    if(fullRedraw || battery!=lastBattery) {
+      tft.fillRect(375,4,105,56,ILI9488_BLACK);
+      if(battery>=0)snprintf(text,sizeof(text),"%d%%",battery);
+      else snprintf(text,sizeof(text),"--%%");
+      int size=7;
+      int16_t bx,by;uint16_t bw,bh;
+      do {
+        tft.setTextSize(size);tft.getTextBounds(text,0,0,&bx,&by,&bw,&bh);
+        if(bw<=100 && bh<=52)break;
+      } while(--size>1);
+      centeredText(text,427,32,size,ILI9488_WHITE);
+      lastBattery=battery;
+    }
     if(fullRedraw || valid!=lastValid || (valid && speed!=lastSpeed)) {
       tft.fillRect(10,83,190,40,ILI9488_BLACK);
       if(valid)snprintf(text,sizeof(text),"%lu.%lu",(unsigned long)(speed/10),(unsigned long)(speed%10));

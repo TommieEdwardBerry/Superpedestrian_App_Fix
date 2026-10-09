@@ -1,8 +1,10 @@
 # Superpedestrian_App_Fix
 
-A standalone ESP32-S3 touchscreen handlebar controller for a Superpedestrian Copenhagen Wheel. It replaces the phone's ride-control interface with ECO / STANDARD / TURBO arrows, wheel-derived speed, and resettable trip distance.
+A standalone ESP32-S3 touchscreen handlebar controller for a Superpedestrian Copenhagen Wheel. It replaces the phone's ride-control interface with ECO / STANDARD / TURBO arrows, wheel-derived speed, resettable trip distance, and remaining wheel battery percentage.
 
 **Release v1.0.0 — working firmware v7, October 1, 2026.** Built and uploaded to an ESP32-S3 on Windows COM17. The bike owner confirmed the final speed, distance, reset, and mode interface worked.
+
+**Source update — firmware v8, October 9, 2026.** Adds remaining wheel battery percentage above RESET. Compilation and upload of this update are being handled by the owner; v8 hardware validation has not yet been reported. The v1.0.0 release remains the previously tested v7 version.
 
 ## Why this project exists
 
@@ -15,6 +17,7 @@ This project supplies Arduino firmware for that controller. It is not an iPhone 
 - Centered TERRY heading and ECO < STANDARD < TURBO guide.
 - Left/right arrows select the adjacent assistance mode. The confirmed mode is centered between them.
 - MPH shown to one decimal place; TRIP MILES shown to three decimal places.
+- Large white battery percentage above RESET: 100% means full and 0% means empty; no battery icon. The font automatically fits the available space, and only changes to the value redraw that field.
 - RESET clears only trip distance and immediately saves zero.
 - One authenticated BLE connection stays open while the wheel is on. The controller retries automatically when disconnected.
 - Disconnection replaces the dashboard with large white **Turn On Bike** text.
@@ -53,6 +56,7 @@ Superpedestrian_App_Fix/
   Superpedestrian_App_Fix.ino
   BoardDisplay.h
   WheelPresets.h
+  WheelBattery.h
   WheelTelemetry.h
   WheelConfig.example.h
   WheelConfig.h                 # YOUR local copy; never committed
@@ -63,7 +67,7 @@ Superpedestrian_App_Fix/
 3. Remove the template's `#error` after configuring it.
 4. Keep `WheelConfig.h` private. The included `.gitignore` excludes it.
 
-The public source preserves the working v7 logic and captured mode presets, with the original wheel's credentials moved out of the published code. A configured build is required; no firmware binary containing the owner's passcode is distributed. Do not use the zero-filled template as a real credential.
+The public source preserves the v7 control and telemetry logic plus the v8 battery display and captured mode presets, with the original wheel's credentials moved out of the published code. A configured build is required; no firmware binary containing the owner's passcode is distributed. Do not use the zero-filled template as a real credential.
 
 The passcode is distinct from an account email/password or an iPhone's Bluetooth address. This release does not perform an online login or include account credentials. Mode packets were captured from the owner's wheel; other wheel configurations may require their own verified presets.
 
@@ -115,7 +119,7 @@ Touch coordinates use a saved three-point affine calibration. If it is missing, 
 | Character | Action |
 | --- | --- |
 | `r` | Read the wheel's assistance mode |
-| `d` | Print telemetry validity, speed in tenths of mph, and trip millimetres |
+| `d` | Print telemetry validity, speed in tenths of mph, trip millimetres, and battery percentage |
 | `z` | Reset trip distance |
 | `c` | Run touch calibration while idle |
 
@@ -134,6 +138,7 @@ GATT UUIDs use the base `52756265-6e43-6167-6e69-65435048` plus these suffixes:
 | `5104` | Access state; accepted exact byte `01` |
 | `500a` | Assistance-mode configuration, 20-byte read/write |
 | `5002` | Motion telemetry, 20-byte read |
+| `500b` | Remaining battery charge, byte 7 of a 20-byte read |
 
 The app did not ask the owner for a passcode. Public protocol data was investigated and an exact serial/passcode match was verified locally. The credential is deliberately absent from this publication.
 
@@ -158,6 +163,12 @@ produced **6.0960575 m (20.00019 ft)** for the measured 20-foot rollout. This is
 
 The final firmware reads motion telemetry approximately every 500 ms and integrates speed using measured elapsed time. It rejects integration across failed reads, disconnects, and sample intervals over two seconds. Invalid or stale speed displays `--`; there is no distance accumulation across a disconnected interval. It uses actual elapsed time rather than a fixed distance increment per notification.
 
+## Battery percentage
+
+The firmware reads controller characteristic `500b` every five seconds over the existing BLE connection. Byte 7 contains the remaining charge from 0 to 100. The field was identified from the inspected R1.03 implementation and saved wheel packets. RedWheel showed 60% when the owner requested this addition; comparison with the new controller display remains pending.
+
+Missing, invalid, or 20-second-old readings display `--%` rather than a guessed value. This is wheel-reported remaining charge, not percentage used or the controller's own USB battery charge. RESET affects trip distance only.
+
 ## Session development summary
 
 1. Inspected the Rev6 hardware and reused the display/touch libraries from the completed Kingpan CAN charger work.
@@ -169,6 +180,8 @@ The final firmware reads motion telemetry approximately every 500 ms and integra
 7. Added the temporary portable 20-foot recorder and retrieved the stored calibration.
 8. Removed that temporary interface and added mph, persistent trip miles, and trip reset.
 9. Compiled, uploaded, checked live stationary telemetry/reset, and received the owner's confirmation: **“It works perfect!”**
+
+10. Added wheel-reported remaining battery percentage above RESET, with adaptive white text and change-only redraws; owner will compile and upload this source update.
 
 Internal discovery scripts, raw captures, backups, account screenshots, and credentials remain local. This release contains the final source and its documentation.
 
